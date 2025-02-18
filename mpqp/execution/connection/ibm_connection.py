@@ -112,15 +112,28 @@ def get_QiskitRuntimeService() -> "QiskitRuntimeService":
 
     """
     from qiskit_ibm_runtime import QiskitRuntimeService
+    from mpqp import config
 
     global Runtime_Service
     if Runtime_Service is None:
-        if get_env_variable("IBM_CONFIGURED") == "False":
+        if get_env_variable("IBM_CONFIGURED") == "False" and config.data == None:
             raise IBMRemoteExecutionError(
                 "Error when instantiating QiskitRuntimeService. No IBM account configured."
             )
         try:
-            Runtime_Service = QiskitRuntimeService(channel="ibm_quantum")
+            proxy = None
+
+            if "proxy" in config.ibm[config.use_profile].keys():
+                proxy = {}
+                for key in ["urls", "username_ntlm", "password_ntlm"]:
+                    if key in config.ibm[config.use_profile]['proxy'].keys():
+                        proxy[key] = config.ibm[config.use_profile]['proxy'][key]
+
+            Runtime_Service = QiskitRuntimeService(
+                channel="ibm_quantum",
+                token=config.ibm[config.use_profile]['token'],
+                proxies=proxy,
+            )
         except Exception as err:
             raise IBMRemoteExecutionError(
                 "Error when instantiating QiskitRuntimeService (probably wrong token saved "

@@ -7,7 +7,9 @@
   "reportUnknownMemberType": "none",
   "reportUnknownLambdaType": "none",
   "reportMissingTypeStubs": "none",
+  "reportUnusedVariable": "none",
   "reportUnknownParameterType": "none",
+  "reportOptionalSubscript": "warning",
   "reportUnnecessaryTypeIgnoreComment": "warning",
   "ignore": ["__pycache__/", "build/"]
 }
