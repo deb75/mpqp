@@ -63,6 +63,11 @@ data = None
 ibm = None
 aws = None
 qlm = None
+__active_profile: str = ""
+
+
+class ConfigError(ValueError):
+    """Raised any time an error occurs at configuration level."""
 
 
 def load(configFile: str | None = None):
@@ -100,4 +105,84 @@ def load(configFile: str | None = None):
             qlm = data['QLM'] if 'QLM' in data.keys() else None
 
 
-use_profile = None
+def is_loaded(provider: str | None = None):
+    return (data != None) and (
+        (provider.upper() in data.keys()) if (provider != None) else True
+    )
+
+
+def get_active_profile() -> str:
+    return __active_profile
+
+
+def unset_active_profile():
+    __active_profile = ""
+
+
+def is_set_active_profile(provider: str | None = None):
+    if is_loaded(provider) and __active_profile:
+        if provider != None:
+            if provider.upper() != __active_profile.split("|")[0]:
+                raise ConfigError(
+                    "Active profile \"%s\" is not valid for given provider \"%s\""
+                    % (__active_profile, provider.upper())
+                )
+            else:
+                return True
+        else:
+            return True
+    else:
+        return False
+
+
+def set_active_profile(profile_name: str, provider: str | None = None) -> None:
+    global __active_profile
+
+    if not is_loaded(provider):
+        raise ConfigError(
+            "No configuration file loaded. Try \"config.load()\" at first."
+        )
+
+    if provider is not None:
+        if (
+            provider.upper()
+            not in data.keys()  # pyright: ignore[reportOptionalMemberAccess]
+        ):
+            raise ConfigError("Unknown provider \"%s\"" % provider)
+        else:
+            if profile_name not in data[provider.upper()]["profile"]:
+                raise ConfigError(
+                    "Unknown profile name \"%s\" for provider \"%s\""
+                    % (profile_name, provider)
+                )
+            else:
+                __active_profile = provider.upper() + "|" + profile_name
+    else:
+        # If names of profiles are unique across all providers,
+        # it is enough to give only the profile name.
+        __active_profile = ""
+
+        for key_provider in data.keys():  # pyright: ignore[reportOptionalMemberAccess]
+            if profile_name in data[key_provider]["profile"].keys():
+                __active_profile = key_provider + "|" + profile_name
+                break
+
+        if not __active_profile:
+            raise ConfigError(
+                "Could not find profile name \"%s\" across all providers \"%s\""
+                % (
+                    profile_name,
+                    str(data.keys()),  # pyright: ignore[reportOptionalMemberAccess]
+                )
+            )
+    __logger.info("Active profile set to \"%s\"" % __active_profile)
+
+
+def get_active_profile_data():
+    """Warning : This function does not perform any check.  You are supposed to perform
+    these checks before : configuration loaded, existing profile and profile
+    corresponding to desired provider
+
+    """
+    provider, profile_name = __active_profile.split("|")
+    return data[provider]["profile"][profile_name]

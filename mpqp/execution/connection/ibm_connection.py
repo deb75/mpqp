@@ -116,23 +116,28 @@ def get_QiskitRuntimeService() -> "QiskitRuntimeService":
 
     global Runtime_Service
     if Runtime_Service is None:
-        if get_env_variable("IBM_CONFIGURED") == "False" and config.data == None:
+        if get_env_variable("IBM_CONFIGURED") == "False" and (
+            not config.is_loaded("ibm")
+        ):
             raise IBMRemoteExecutionError(
                 "Error when instantiating QiskitRuntimeService. No IBM account configured."
             )
         try:
-            proxy = None
-
-            if "proxy" in config.ibm[config.use_profile].keys():
-                proxy = {}
-                for key in ["urls", "username_ntlm", "password_ntlm"]:
-                    if key in config.ibm[config.use_profile]['proxy'].keys():
-                        proxy[key] = config.ibm[config.use_profile]['proxy'][key]
+            ibm_profile = (
+                config.get_active_profile_data()
+                if config.is_set_active_profile("IBM")
+                else None
+            )
 
             Runtime_Service = QiskitRuntimeService(
                 channel="ibm_quantum",
-                token=config.ibm[config.use_profile]['token'],
-                proxies=proxy,
+                token=ibm_profile['token'],
+                proxies=(
+                    ibm_profile["proxy"]
+                    if "proxy"
+                    in ibm_profile.keys()  # pyright: ignore[reportOptionalMemberAccess]
+                    else None
+                ),
             )
         except Exception as err:
             raise IBMRemoteExecutionError(
